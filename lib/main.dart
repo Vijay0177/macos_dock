@@ -65,8 +65,8 @@ class Dock<T extends Object> extends StatefulWidget {
 class _DockState<T extends Object> extends State<Dock<T>> {
   /// List of items that can be reordered in the dock.
   late final List<T> _items = widget.items.toList();
-
   int? _draggedIndex;
+  bool _isHovering = false; // Track if the dock is being hovered
 
   @override
   Widget build(BuildContext context) {
@@ -91,17 +91,35 @@ class _DockState<T extends Object> extends State<Dock<T>> {
               onDragStarted: () {
                 setState(() {
                   _draggedIndex = index; // Track the index of the dragged item
+                  _isHovering = false; // Reset hover state when dragging starts
                 });
               },
-              onDraggableCanceled: (_, __) {
+              onDraggableCanceled: (velocity, offset) {
                 setState(() {
                   _draggedIndex = null; // Reset index if dragging is canceled
+                  _isHovering = false; // Reset hover state
                 });
               },
-              onDragEnd: (_) {
-                setState(() {
-                  _draggedIndex = null; // Clear dragged index on drag end
-                });
+              onDragEnd: (details) {
+                // If hovering, place the dragged item into the dock
+                if (_isHovering) {
+                  final draggedItem = item; // Store the item being dragged
+                  setState(() {
+                    // Remove the item from the original position
+                    if (_draggedIndex != null) {
+                      _items.removeAt(_draggedIndex!);
+                    }
+                    // Insert the dragged item at the hover index
+                    _items.insert(index, draggedItem);
+                    _isHovering = false; // Reset hover state
+                    _draggedIndex = null; // Clear dragged index
+                  });
+                } else {
+                  setState(() {
+                    _draggedIndex = null; // Clear dragged index on drag end
+                    _isHovering = false; // Reset hovering state
+                  });
+                }
               },
               feedback: Material(
                 color: Colors.transparent,
@@ -109,32 +127,30 @@ class _DockState<T extends Object> extends State<Dock<T>> {
               ),
               childWhenDragging: Container(
                 height: 48,
-                width: 0,
-                color: Colors.transparent, // Make it transparent to keep space
+                width: _isHovering ? 48 : 0,
+                color: Colors.transparent, // Empty container during dragging
               ),
               child: DragTarget<T>(
-                onAcceptWithDetails: (receivedItem) {
+                onWillAcceptWithDetails: (receivedItem) {
                   setState(() {
-                    // Get the index of the item being dragged
-                    final draggedItem = _items[_draggedIndex!];
-                    // Remove the dragged item from the old position
-                    _items.removeAt(_draggedIndex!);
-                    // Insert it into the new position
-                    _items.insert(_draggedIndex!, draggedItem);
-                    // Reset indices
-                    _draggedIndex = null;
+                    _isHovering = true; // Set hovering state to true
+                  });
+                  return true; // Accept the drag
+                },
+                onLeave: (receivedItem) {
+                  setState(() {
+                    _isHovering = false; // Reset hover state when leaving
                   });
                 },
-                onWillAcceptWithDetails: (receivedItem) => receivedItem != item,
+                onAcceptWithDetails: (receivedItem) {
+                  // Logic handled in onDragEnd
+                },
                 builder: (context, candidateData, rejectedData) {
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     curve: Curves.easeInOut,
-                    transform: _draggedIndex == index
-                        ? Matrix4.translationValues(0.0, -10.0, 0.0)
-                        : Matrix4.identity(),
-                    child: Opacity(
-                      opacity: (_draggedIndex == index) ? 0.5 : 1.0,
+                    child: Material(
+                      color: Colors.transparent,
                       child: widget.builder(item),
                     ),
                   );
