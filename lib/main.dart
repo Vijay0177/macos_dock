@@ -82,59 +82,64 @@ class _DockState<T extends Object> extends State<Dock<T>> {
           final index = entry.key;
           final item = entry.value;
 
-          return Draggable<T>(
-            data: item,
-            onDragStarted: () {
-              setState(() {
-                _draggedIndex = index; // Track the index of the dragged item
-              });
-            },
-            onDraggableCanceled: (_, __) {
-              setState(() {
-                _draggedIndex = null; // Reset index if dragging is canceled
-              });
-            },
-            onDragEnd: (_) {
-              setState(() {
-                _draggedIndex = null; // Clear dragged index on drag end
-              });
-            },
-            feedback: Material(
-              color: Colors.transparent,
-              child: widget.builder(item),
-            ),
-            childWhenDragging: Container(
-              height: 0,
-              width: 0,
-              color: Colors.transparent, // Make it transparent to keep space
-            ),
-            child: DragTarget<T>(
-              onAcceptWithDetails: (receivedItem) {
+          return AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            clipBehavior: Clip.antiAlias,
+            child: Draggable<T>(
+              data: item,
+              onDragStarted: () {
                 setState(() {
-                  // Get the index of the item being dragged
-                  final draggedItem = _items[_draggedIndex!];
-                  // Remove the dragged item from the old position
-                  _items.removeAt(_draggedIndex!);
-                  // Insert it into the new position
-                  _items.insert(index, draggedItem);
-                  // Reset indices
-                  _draggedIndex = null;
+                  _draggedIndex = index; // Track the index of the dragged item
                 });
               },
-              onWillAcceptWithDetails: (receivedItem) => receivedItem != item,
-              builder: (context, candidateData, rejectedData) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeInOut,
-                  transform: _draggedIndex == index
-                      ? Matrix4.translationValues(0.0, -10.0, 0.0)
-                      : Matrix4.identity(),
-                  child: Opacity(
-                    opacity: (_draggedIndex == index) ? 0.5 : 1.0,
-                    child: widget.builder(item),
-                  ),
-                );
+              onDraggableCanceled: (_, __) {
+                setState(() {
+                  _draggedIndex = null; // Reset index if dragging is canceled
+                });
               },
+              onDragEnd: (_) {
+                setState(() {
+                  _draggedIndex = null; // Clear dragged index on drag end
+                });
+              },
+              feedback: Material(
+                color: Colors.transparent,
+                child: widget.builder(item),
+              ),
+              childWhenDragging: Container(
+                height: 48,
+                width: 0,
+                color: Colors.transparent, // Make it transparent to keep space
+              ),
+              child: DragTarget<T>(
+                onAcceptWithDetails: (receivedItem) {
+                  setState(() {
+                    // Get the index of the item being dragged
+                    final draggedItem = _items[_draggedIndex!];
+                    // Remove the dragged item from the old position
+                    _items.removeAt(_draggedIndex!);
+                    // Insert it into the new position
+                    _items.insert(_draggedIndex!, draggedItem);
+                    // Reset indices
+                    _draggedIndex = null;
+                  });
+                },
+                onWillAcceptWithDetails: (receivedItem) => receivedItem != item,
+                builder: (context, candidateData, rejectedData) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeInOut,
+                    transform: _draggedIndex == index
+                        ? Matrix4.translationValues(0.0, -10.0, 0.0)
+                        : Matrix4.identity(),
+                    child: Opacity(
+                      opacity: (_draggedIndex == index) ? 0.5 : 1.0,
+                      child: widget.builder(item),
+                    ),
+                  );
+                },
+              ),
             ),
           );
         }).toList(),
